@@ -1,10 +1,9 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "Slog.h"
 #include <sstream>
 #include <time.h>
 #include <stdarg.h>
 #include <Windows.h>
-#include <sys/stat.h>  
 
 using namespace std;
 
@@ -15,6 +14,7 @@ using namespace std;
 
 CSlog* CSlog::m_pInst = NULL;
 char   g_pLogTag[][4] = {"DBG", "INF", "WRN", "ERR", "ARM", "FTL", "NUL"};
+
 
 int CSlog::MakeMultiPath(const string& strPath)
 {
@@ -67,6 +67,12 @@ int CSlog::Split(const string& strSrc, const string& strDim, vector<string>& vec
         nPos += strDim.length();
         nLast =  nPos;
     }
+    // 处理尾巴
+    size_t nLen = strSrc.size();
+    if(nLast < nLen)
+    {
+        vecItems.push_back(strSrc.substr(nLast, nLen-nLast));
+    }
     return vecItems.size();
 }
 
@@ -81,9 +87,8 @@ void CSlog::SetCfg(const LV& lv, const string& strName, const string& strLogPath
             m_strLogPath += "/";
         }
     }
-    m_strLogName = strName;
+    m_strAppName = strName;
     m_lvLog = lv;
-    m_bMakeDir = false;
 
     // 关闭文件
     Uninit();
@@ -91,7 +96,7 @@ void CSlog::SetCfg(const LV& lv, const string& strName, const string& strLogPath
 
 CSlog* CSlog::Inst()
 {
-    // 线程不安全的
+    // 非线程安全
     if(m_pInst == NULL)
     {
         m_pInst = new CSlog();
@@ -106,7 +111,7 @@ string CSlog::BuildInfo(const LogInfo& oInfo)
     // [2016-10-31 15:16:52] [PTD:123,456] [FLF:main.cpp,68,GetUserName] #ERROR# This is a FATAL Log 998001
     ssLog << "[" << oInfo.strDateTime << "] "
           << "[PTD:" << oInfo.nPid << "," << oInfo.nTid << "] "
-          << "[FLF:" << oInfo.strFile << "," << oInfo.nLine << "," << oInfo.strFunc << "] "
+          << "[FLF:" << GetFileName(oInfo.strFile) << "," << oInfo.nLine << "," << oInfo.strFunc << "] "
           << "#" << oInfo.strTag << "# "
           << oInfo.strMsg << "\n";
     
@@ -228,19 +233,39 @@ size_t CSlog::WriteLog(const LV& lv, const string& strLog)
         return 0;
     }
 
-    // 获取文件
-    FILE* fp = ObtainFile(lv);
+    FILE* fp = NULL;
+    LV wlv = lv;
+
+    switch (m_fmLog)
+    {
+    case FM_ALL:
+        {
+            wlv = m_lvLog;
+            break;
+        }
+    case FM_TREE:
+    case FM_SELF:
+        {
+            wlv = lv;
+            break;
+        }
+    }
+
+    // 写当前日志
+    fp= ObtainFile(wlv);
     if(fp)
     {
+        Lock(wlv);
         fwrite(strLog.c_str(), strLog.length(), 1, fp);
+        Unlock(wlv);
     }
     
-    if(m_fmLog == FM_EVERY)
+    // 写下级日志
+    if(m_fmLog == FM_TREE)
     {
-        // 写下级日志
         WriteLog((LV)(lv-1), strLog);
     }
-    return 0;
+    return strLog.length();
 }
 
 bool CSlog::Init()
@@ -249,11 +274,10 @@ bool CSlog::Init()
 
     m_lvLog = LV_DEBUG;
     m_strLogPath = "./log/";
-    m_strLogName = "slog";
+    m_strAppName = "slog";
     m_nMaxFileSize = 1024*1024*20;
     m_nMaxFileNum = 20;
 
-    // 下面的代码运行后不准再动
     for (int i=0; i<=LV_MAX; i++)
     {
         CloseFile((LV)i);
@@ -324,27 +348,34 @@ FILE* CSlog::ObtainFile(const LV& lv)
 {
     string strName = m_strLogPath + GetName(lv, 0);
 
-    if(!m_bMakeDir)
-    {
-        MakeMultiPath(m_strLogPath);
-        m_bMakeDir = true;
-    }
+    int nTryNum = 2;
 
-    if(m_fpLog[lv] == NULL)
+    do
     {
-        m_fpLog[lv] = fopen(strName.c_str(), "a");
-    }
-    else if(GetFileSize(strName.c_str()) >= m_nMaxFileSize)
-    {
-        CloseFile(lv);
-        RollFile(lv);
-    }
+        nTryNum -= 1;
+        if(m_fpLog[lv] == NULL)
+        {
+            m_fpLog[lv] = fopen(strName.c_str(), "a");
+            if(m_fpLog[lv] == NULL)
+            {
+                // 打开文件失败，尝试创建目录
+                MakeMultiPath(m_strLogPath);
+            }
+        }
+        else if(GetFileSize(strName.c_str()) >= m_nMaxFileSize)
+        {
+            CloseFile(lv);
+            RollFile(lv);
+            continue;
+        }
+    }while(nTryNum>0);
+
     return m_fpLog[lv];
 }
 
 std::string CSlog::GetName(const LV& lv, int nIdx)
 {
-    string strRet = m_strLogName + "_" + GetDateTime(DATE_FMT_DATE) + "_" + g_pLogTag[lv];
+    string strRet = m_strAppName + "_" + GetDateTime(DATE_FMT_DATE) + "_" + g_pLogTag[lv];
 
     if(nIdx == 0)
     {
@@ -385,4 +416,33 @@ void CSlog::SetFileRoll(const size_t& nMaxFileSize, const int& nMaxFileNum)
 {
     m_nMaxFileSize = nMaxFileSize;
     m_nMaxFileNum = nMaxFileNum;
+}
+
+std::string CSlog::GetFileName(const string& strPath)
+{
+    string  strName;
+    vector<string> vecPath;
+
+    GetPathUnit(strPath, vecPath);
+    if(vecPath.size() > 0)
+    {
+        strName = vecPath[vecPath.size()-1];
+    }
+    return strName;
+}
+
+void CSlog::Lock(int nLv)
+{
+    if(m_bEnableTS)
+    {
+        EnterCriticalSection(&m_csFile[nLv]);
+    }
+}
+
+void CSlog::Unlock(int nLv)
+{
+    if(m_bEnableTS)
+    {
+        LeaveCriticalSection(&m_csFile[nLv]);
+    }
 }
