@@ -1,11 +1,12 @@
-#include "stdafx.h"
 #include "Slog.h"
 #include <sstream>
 #include <time.h>
 #include <stdarg.h>
 #include <Windows.h>
+#include <stdexcept>
 
 using namespace std;
+using namespace CMS;
 
 
 // 关闭特定编译警告
@@ -13,7 +14,7 @@ using namespace std;
 
 
 CSlog* CSlog::m_pInst = NULL;
-char   g_pLogTag[][4] = {"DBG", "INF", "WRN", "ERR", "ARM", "FTL", "NUL"};
+char   g_pLogTag[][8] = {"DEBUG", "INFO", "WARN", "ERROR", "FATAL", "NULL"};
 
 
 int CSlog::MakeMultiPath(const string& strPath)
@@ -29,7 +30,7 @@ int CSlog::MakeMultiPath(const string& strPath)
         strCurPath += vecPath[i] + "/";
         if(!FileExist(strCurPath))
         {
-            CreateDirectory(strCurPath.c_str(), NULL);
+            CreateDirectoryA(strCurPath.c_str(), NULL);
             nMakes += 1;
         }
     }
@@ -108,11 +109,12 @@ string CSlog::BuildInfo(const LogInfo& oInfo)
 {
     stringstream ssLog;
 
-    // [2016-10-31 15:16:52] [PTD:123,456] [FLF:main.cpp,68,GetUserName] #ERROR# This is a FATAL Log 998001
+    // [2016-10-31 15:16:52] [123,456] [main.cpp,68,GetUserName] #ERROR# This is a FATAL Log 998001
     ssLog << "[" << oInfo.strDateTime << "] "
-          << "[PTD:" << oInfo.nPid << "," << oInfo.nTid << "] "
-          << "[FLF:" << GetFileName(oInfo.strFile) << "," << oInfo.nLine << "," << oInfo.strFunc << "] "
+          << "[" << oInfo.nPid << "," << oInfo.nTid << "] "
+          << "[" << GetFileName(oInfo.strFile) << "," << oInfo.nLine << "," << oInfo.strFunc << "] "
           << "#" << oInfo.strTag << "# "
+          << oInfo.strTitle
           << oInfo.strMsg << "\n";
     
     return ssLog.str();
@@ -133,13 +135,20 @@ std::string CSlog::GetDateTime(const DATE_FMT& fmt)
 {
     time_t t = time(NULL); 
     char szBuf[64] = {0};
-    if(fmt == DATE_FMT_LOG)
+    if(fmt == DATE_FMT_LOG_SEC)
     {
         strftime(szBuf, sizeof(szBuf), "%Y%m%d %H:%M:%S",localtime(&t) ); 
     }
-    else if(DATE_FMT_DATE)
+    else if(fmt == DATE_FMT_DATE)
     {
         strftime(szBuf, sizeof(szBuf), "%Y%m%d",localtime(&t) ); 
+    }
+    else if(fmt == DATE_FMT_LOG_MSEC)
+    {
+        SYSTEMTIME st;
+        GetLocalTime(&st);
+        sprintf_s(szBuf, sizeof(szBuf), "%4d-%02d-%02d %02d:%02d:%02d.%03d",
+                  st.wYear,st.wMonth,st.wDay, st.wHour,st.wMinute,st.wSecond, st.wMilliseconds);
     }
     return szBuf;
 }
@@ -149,7 +158,7 @@ void CSlog::LogFormate(LogInfo& oInfo, const LV& lv, const int nLine, const char
 {
     va_list args;
 
-    oInfo.strDateTime = GetDateTime(DATE_FMT_LOG);
+    oInfo.strDateTime = GetDateTime(DATE_FMT_LOG_MSEC);
     oInfo.nLogLv = lv;
     oInfo.nLine = nLine;
     oInfo.strFunc = pFunc;
@@ -161,6 +170,95 @@ void CSlog::LogFormate(LogInfo& oInfo, const LV& lv, const int nLine, const char
     va_start(args, pFmt);
     oInfo.strMsg = Formate(pFmt, args);
     va_end(args);
+}
+
+void CMS::CSlog::LogBuf(LogInfo& oInfo, const LV& lv, const int nLine, const char* pFunc, const char* pFile, const char* pBuf, const int nLen)
+{
+    oInfo.strDateTime = GetDateTime(DATE_FMT_LOG_MSEC);
+    oInfo.nLogLv = lv;
+    oInfo.nLine = nLine;
+    oInfo.strFunc = pFunc;
+    oInfo.strFile = pFile;
+    oInfo.nPid = GetCurrentProcessId();
+    oInfo.nTid = GetCurrentThreadId();
+    oInfo.strTag = g_pLogTag[lv];
+    oInfo.strMsg.assign(pBuf, nLen);
+}
+
+size_t CMS::CSlog::LogToFile(const int& nLogLvl, const string& strLog)
+{
+    FILE* fp = NULL;
+    int nTryNum = 2;
+    CMS::CSlog::LV wlv = (CMS::CSlog::LV)nLogLvl;
+    while(--nTryNum > 0)
+    {
+        fp= ObtainFile(wlv);
+        if(fp)
+        {
+            if(fwrite(strLog.c_str(), strLog.length(), 1, fp) != 1)
+            {
+                CloseFile(wlv);
+            }
+            else
+            {
+                fflush(fp);
+                break;
+            }
+        }
+    }
+
+    return strLog.size();
+}
+
+unsigned int __stdcall CMS::CSlog::LogWork(void* pLog)
+{
+    CSlog* pThis = (CSlog*)pLog;
+
+    size_t nLogLvl = 0;
+    queue<string>* pLogBuf = pThis->m_quLogBuf;
+    string  strLog;
+    bool    bFetchLog = false;
+    int     nTryNum = 2;
+    FILE*   fpLog = NULL;
+    bool    bHaveLogs = false;
+
+    while(pThis->m_bRun)
+    {
+        // 写日志到文件
+        bHaveLogs = false;
+        for (nLogLvl=0; nLogLvl<LV_MAX; nLogLvl++)
+        {
+            if(pLogBuf[nLogLvl].size() > 0)
+            {
+                // 获取队列日志
+                bFetchLog = false;
+                pThis->Lock(nLogLvl);
+                if(pLogBuf[nLogLvl].size() > 0)
+                {
+                    strLog = pLogBuf[nLogLvl].front();
+                    pLogBuf[nLogLvl].pop();
+                    bFetchLog = true;
+                }
+                pThis->Unlock(nLogLvl);
+
+                // 写日志到文件
+                if(bFetchLog)
+                {
+                    bHaveLogs = true;
+                    pThis->LogToFile(nLogLvl, strLog);
+                }
+            }
+        }
+
+        // 如果没有获取到日志，休眠一段时间
+        if(!bHaveLogs)
+        {
+            // printf("没有日志了，睡一会儿\n");
+            Sleep(1000);
+        }
+    }
+
+    return 0;
 }
 
 std::string CSlog::Formate(const char * pFmt, ...)
@@ -175,50 +273,46 @@ std::string CSlog::Formate(const char * pFmt, ...)
     return strRet;
 }
 
+
 std::string CSlog::Formate(const char * pFmt, va_list va)
 {
-    char    szBuf[256] = {0};
     int     nLen = 0;
     string  strRet;
 
-    nLen = vsprintf_s(szBuf, sizeof(szBuf)-1, pFmt, va);
+    nLen = _vscprintf(pFmt, va) + 1;
 
-    // 重试次数
-    int nRetry = 0;
-    // 返回负数，或者返回数值是总容纳数量
-    if(nLen<0 || (nLen+1)>=sizeof(szBuf))
+    char* pBuf = NULL;
+    char* pNewBuf = NULL;
+    try
     {
-        nRetry = 10;
-        nLen = sizeof(szBuf);
-    }
-    else
-    {
-        strRet = szBuf;
-    }
-
-    // 扩大数据容量重试
-    while(nRetry > 0)
-    {
-        nLen += nLen;
-        char* pBuf = new char[nLen];
-        if(pBuf == NULL)
+        static char pMiniBuf[1024] = {0};
+        
+        // 小内存不额外分配内存
+        if(nLen < 1024)
         {
-            // 内存分配失败
-            break;
-        }
-
-        memset(pBuf, 0, sizeof(char)*nLen);
-        int nRetLen = vsprintf_s(pBuf, nLen-1, pFmt, va);
-        if(nRetLen<0 || (nRetLen+1)>=nLen)
-        {
-            nRetry--;
+            pBuf = pMiniBuf;
         }
         else
         {
-            strRet = pBuf;
-            nRetry = 0;
+            pNewBuf = new char[nLen];
+            if(pNewBuf == NULL)
+            {
+                // 内存分配失败
+                throw runtime_error("alloc memory failed.");
+            }
+            pBuf = pNewBuf;
         }
 
+        memset(pBuf, 0, sizeof(char)*nLen);
+        vsprintf_s(pBuf, nLen, pFmt, va);
+        strRet = pBuf;
+    }
+    catch(...)
+    {
+        // 异常错误
+    }
+    if(pNewBuf)
+    {
         delete[] pBuf;
         pBuf = NULL;
     }
@@ -226,7 +320,7 @@ std::string CSlog::Formate(const char * pFmt, va_list va)
     return strRet;
 }
 
-size_t CSlog::WriteLog(const LV& lv, const string& strLog)
+size_t CSlog::WriteLogBuf(const LV& lv, const string& strLog)
 {
     if((lv<m_lvLog) || (lv>=LV_MAX))
     {
@@ -252,18 +346,14 @@ size_t CSlog::WriteLog(const LV& lv, const string& strLog)
     }
 
     // 写当前日志
-    fp= ObtainFile(wlv);
-    if(fp)
-    {
-        Lock(wlv);
-        fwrite(strLog.c_str(), strLog.length(), 1, fp);
-        Unlock(wlv);
-    }
+    Lock(wlv);
+    m_quLogBuf[wlv].push(strLog);
+    Unlock(wlv);
     
     // 写下级日志
     if(m_fmLog == FM_TREE)
     {
-        WriteLog((LV)(lv-1), strLog);
+        WriteLogBuf((LV)(lv-1), strLog);
     }
     return strLog.length();
 }
@@ -274,7 +364,7 @@ bool CSlog::Init()
 
     m_lvLog = LV_DEBUG;
     m_strLogPath = "./log/";
-    m_strAppName = "slog";
+    m_strAppName = "sfcg_util";
     m_nMaxFileSize = 1024*1024*20;
     m_nMaxFileNum = 20;
 
@@ -306,7 +396,7 @@ size_t CSlog::GetFileSize(const string& strFile)
     _stat(strFile.c_str(), &oInfo);
     nSize = oInfo.st_size;
 #else
-    HANDLE hFile = CreateFile(strFile.c_str(), FILE_READ_EA, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+    HANDLE hFile = CreateFileA(strFile.c_str(), FILE_READ_EA, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
     if (hFile != INVALID_HANDLE_VALUE)
     {
         nSize = ::GetFileSize(hFile, NULL);
@@ -331,16 +421,16 @@ bool CSlog::RollFile(const LV& lv, int nStart)
         // 删除旧文件
         if(FileExist(strNewPath.c_str()))
         {
-            DeleteFile(strNewPath.c_str());
+            DeleteFileA(strNewPath.c_str());
         }
 
         // 复制文件
         if(FileExist(strPath.c_str()))
         {
-            bRet &= (MoveFile(strPath.c_str(), strNewPath.c_str()) == TRUE);
+            bRet &= (MoveFileA(strPath.c_str(), strNewPath.c_str()) == TRUE);
         }
     }
-    DeleteFile(strPath.c_str());
+    DeleteFileA(strPath.c_str());
     return bRet;
 }
 
@@ -361,12 +451,20 @@ FILE* CSlog::ObtainFile(const LV& lv)
                 // 打开文件失败，尝试创建目录
                 MakeMultiPath(m_strLogPath);
             }
+            else
+            {
+                break;
+            }
         }
         else if(GetFileSize(strName.c_str()) >= m_nMaxFileSize)
         {
             CloseFile(lv);
             RollFile(lv);
             continue;
+        }
+        else
+        {
+            break;
         }
     }while(nTryNum>0);
 
@@ -404,7 +502,7 @@ int CSlog::CloseFile(const LV& lv)
 bool CSlog::FileExist(const string& strFile)
 {
     // 复制文件
-    return (INVALID_FILE_ATTRIBUTES != GetFileAttributes(strFile.c_str()));
+    return (INVALID_FILE_ATTRIBUTES != GetFileAttributesA(strFile.c_str()));
 }
 
 void CSlog::SetFileMode(const FILE_MODE& fm)
@@ -435,7 +533,7 @@ void CSlog::Lock(int nLv)
 {
     if(m_bEnableTS)
     {
-        EnterCriticalSection(&m_csFile[nLv]);
+        EnterCriticalSection(&m_csLogQueue[nLv]);
     }
 }
 
@@ -443,6 +541,6 @@ void CSlog::Unlock(int nLv)
 {
     if(m_bEnableTS)
     {
-        LeaveCriticalSection(&m_csFile[nLv]);
+        LeaveCriticalSection(&m_csLogQueue[nLv]);
     }
 }

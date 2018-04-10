@@ -15,8 +15,8 @@ int main(int argc, char *argv[])
         if(i==100)
         {
             SLogInst->SetFileRoll(1024*1024, 10);
-            SLogInst->SetCfg(CSlog::LV_ERROR, "Roll");
-            SLogInst->SetFileMode(CSlog::FM_CURRENT);
+            SLogInst->SetCfg(CSlog::LV_DEBUG, "Roll");
+            SLogInst->SetFileMode(CSlog::FM_SELF);
         }
     }
     return 0;
