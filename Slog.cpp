@@ -364,7 +364,7 @@ bool CSlog::Init()
 
     m_lvLog = LV_DEBUG;
     m_strLogPath = "./log/";
-    m_strAppName = "sfcg_util";
+    m_strAppName = "app";
     m_nMaxFileSize = 1024*1024*20;
     m_nMaxFileNum = 20;
 
