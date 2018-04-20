@@ -27,9 +27,9 @@ public:
 
     enum FILE_MODE
     {
-        FM_SELF,        // ÈÕÖ¾ÎÄ¼ş½ö´æ´¢×ÔÉíµÈ¼¶µÄÈÕÖ¾
-        FM_TREE,        // ÈÕÖ¾ÎÄ¼ş´æ´¢×ÔÉíµÈ¼¶¼°ÒÔÉÏµÄÈÕÖ¾
-        FM_ALL,         // ËùÒÔÈÕÖ¾¶¼´æ´¢µ½µ±Ç°Éè¶¨µÄÈÕÖ¾µÈ¼¶ÎÄ¼şÖĞ
+        FM_SELF,        // æ—¥å¿—æ–‡ä»¶ä»…å­˜å‚¨è‡ªèº«ç­‰çº§çš„æ—¥å¿—
+        FM_TREE,        // æ—¥å¿—æ–‡ä»¶å­˜å‚¨è‡ªèº«ç­‰çº§åŠä»¥ä¸Šçš„æ—¥å¿—
+        FM_ALL,         // æ‰€ä»¥æ—¥å¿—éƒ½å­˜å‚¨åˆ°å½“å‰è®¾å®šçš„æ—¥å¿—ç­‰çº§æ–‡ä»¶ä¸­
     };
 
     enum DATE_FMT
@@ -39,73 +39,73 @@ public:
         DATE_FMT_DATE,
     };
     
-    // ÈÕÖ¾ĞÅÏ¢
+    // æ—¥å¿—ä¿¡æ¯
     typedef struct _log_info_
     {
-        unsigned int    nTid;           // Ïß³ÌID
-        unsigned int    nPid;           // ½ø³ÌID
-        unsigned int    nLine;          // ĞĞºÅ
-        int             nLogLv;         // ÈÕÖ¾µÇ¼Ç
-        string          strFile;        // ÎÄ¼şÃû
-        string          strFunc;        // º¯ÊıÃû
-        string          strTag;         // ÈÕÖ¾µÈ¼¶±êÇ©Ãû
-        string          strMsg;         // ÈÕÖ¾ĞÅÏ¢
-        string          strDateTime;    // ÈÕÖ¾Ê±¼ä
-        string          strTitle;       // ±êÌâ£¨Ì§Í·£©
+        unsigned int    nTid;           // çº¿ç¨‹ID
+        unsigned int    nPid;           // è¿›ç¨‹ID
+        unsigned int    nLine;          // è¡Œå·
+        int             nLogLv;         // æ—¥å¿—ç™»è®°
+        string          strFile;        // æ–‡ä»¶å
+        string          strFunc;        // å‡½æ•°å
+        string          strTag;         // æ—¥å¿—ç­‰çº§æ ‡ç­¾å
+        string          strMsg;         // æ—¥å¿—ä¿¡æ¯
+        string          strDateTime;    // æ—¥å¿—æ—¶é—´
+        string          strTitle;       // æ ‡é¢˜ï¼ˆæŠ¬å¤´ï¼‰
     }LogInfo;
 
 public:
-    // ´ÓÂ·¾¶»ñÈ¡ÎÄ¼şÃû
+    // ä»è·¯å¾„è·å–æ–‡ä»¶å
     string GetFileName(const string& strPath);
-    // ÎÄ¼şÊÇ·ñ´æÔÚ
+    // æ–‡ä»¶æ˜¯å¦å­˜åœ¨
     bool FileExist(const string& strFile);
-    // »ñÈ¡ÎÄ¼ş´óĞ¡
+    // è·å–æ–‡ä»¶å¤§å°
     size_t GetFileSize(const string& strFile);
-    // ´´½¨¶à¼¶Ä¿Â¼
+    // åˆ›å»ºå¤šçº§ç›®å½•
     int MakeMultiPath(const string& strPath);
-    // »ñÈ¡Â·¾¶µ¥Ôª£¬·Ö¸îÂ·¾¶
+    // è·å–è·¯å¾„å•å…ƒï¼Œåˆ†å‰²è·¯å¾„
     int GetPathUnit(const string& strPath, vector<string>& vecPath);
-    // ¸ñÊ½»¯×Ö·û´®µ½string
+    // æ ¼å¼åŒ–å­—ç¬¦ä¸²åˆ°string
     static string Formate(const char * pFmt, ...);
     static string Formate(const char * pFmt, va_list va);
 
-    // ×Ö·û´®·Ö¸î 
+    // å­—ç¬¦ä¸²åˆ†å‰² 
     static int Split(const string& strSrc, const string& strDim, vector<string>& vecItems);
-    // »ñÈ¡µ±Ç°Ê±¼ä
+    // è·å–å½“å‰æ—¶é—´
     static string GetDateTime(const DATE_FMT& fmt);
 
 public:
-    // ¶ÔÍâÌá¹©µÄ²ÎÊıµ÷ÕûÉèÖÃ
+    // å¯¹å¤–æä¾›çš„å‚æ•°è°ƒæ•´è®¾ç½®
     void    SetCfg(const LV& lv, const string& strName, const string& strPath="");
     void    SetFileMode(const FILE_MODE& fm);
     void    SetFileRoll(const size_t& nMaxFileSize, const int& nMaxFileNum);
     static  CSlog*  Inst();
 
 public:
-    // Éú³ÉÈÕÖ¾ĞÅÏ¢
+    // ç”Ÿæˆæ—¥å¿—ä¿¡æ¯
     void    LogFormate(LogInfo& oInfo, const LV& lv, const int nLine, const char* pFunc, const char* pFile, const char* pFmt, ...);
     void    LogBuf(LogInfo& oInfo, const LV& lv, const int nLine, const char* pFunc, const char* pFile, const char* pBuf, const int nLen);
     string  BuildInfo(const LogInfo& oInfo);
     string  BuildHeader(const string& strTag);
-    // Ğ´ÈÕÖ¾
+    // å†™æ—¥å¿—
     size_t  WriteLogBuf(const LV& lv, const string& strLog);
 
 protected:
-    // ÈÕÖ¾¹ö¶¯
+    // æ—¥å¿—æ»šåŠ¨
     bool    RollFile(const LV& lv, int nStart=0);
-    // »ñÈ¡Ğ´ÈëÎÄ¼ş
+    // è·å–å†™å…¥æ–‡ä»¶
     FILE*   ObtainFile(const LV& lv);
-    // »ñÈ¡ÈÕÖ¾ÎÄ¼şÃû
+    // è·å–æ—¥å¿—æ–‡ä»¶å
     string GetName(const LV& lv, int nIdx);
-    // Ğ´ÈÕÖ¾µ½ÎÄ¼ş
+    // å†™æ—¥å¿—åˆ°æ–‡ä»¶
     size_t LogToFile(const int& nLogLvl, const string& strLog);
     int    CloseFile(const LV& lv);
     void   Lock(int nLv);
     void   Unlock(int nLv);
 
 protected:
-    // ÈÕÖ¾Ïß³Ìº¯Êı£¬³£×¤ÈÎÎñ´¦Àí£¬Èç£º
-    // 1.»º´æ¶ÓÁĞÊı¾İĞ´ÈëÎÄ¼ş
+    // æ—¥å¿—çº¿ç¨‹å‡½æ•°ï¼Œå¸¸é©»ä»»åŠ¡å¤„ç†ï¼Œå¦‚ï¼š
+    // 1.ç¼“å­˜é˜Ÿåˆ—æ•°æ®å†™å…¥æ–‡ä»¶
     static unsigned int __stdcall LogWork(void* pLog);
 
 private:
@@ -120,7 +120,7 @@ private:
         Init();
         m_fmLog = FM_ALL;
 
-        // ´´½¨ÈÕÖ¾Ïß³Ì
+        // åˆ›å»ºæ—¥å¿—çº¿ç¨‹
         m_hWorkThread = (HANDLE)_beginthreadex(NULL, 0, LogWork, this, CREATE_SUSPENDED, NULL);
         if(m_hWorkThread == INVALID_HANDLE_VALUE)
         {
@@ -130,7 +130,7 @@ private:
         m_bEnableTS = true;
         m_bRun = true;
 
-        // Æô¶¯ÈÕÖ¾Ïß³Ì
+        // å¯åŠ¨æ—¥å¿—çº¿ç¨‹
         ResumeThread(m_hWorkThread);
     }
 
@@ -151,21 +151,21 @@ private:
     bool Uninit();
 
 private:
-    static CSlog*  m_pInst;     // ÈÕÖ¾¾ä±ú
+    static CSlog*  m_pInst;     // æ—¥å¿—å¥æŸ„
 
 protected:
-    CRITICAL_SECTION    m_csLogQueue[LV_MAX+1];     // ÈÕÖ¾¶ÓÁĞËø
-    FILE*               m_fpLog[LV_MAX+1];          // ÈÕÖ¾ÎÄ¼ş¾ä±ú
-    queue<string>       m_quLogBuf[LV_MAX+1];       // ÈÕÖ¾¶ÓÁĞ»º³åÇø
-    LV                  m_lvLog;                    // ÈÕÖ¾µÈ¼¶
-    string              m_strLogPath;               // ÈÕÖ¾ÎÄ¼şÂ·¾¶
-    string              m_strAppName;               // ÈÕÖ¾³ÌĞòÃû³Æ£¬ÈÕÖ¾ÎÄ¼şÃûÖĞ°üº¬¸Ã×Ö¶Î
-    size_t              m_nMaxFileSize;             // µ¥¸öÈÕÖ¾ÎÄ¼ş×î´óÖµ
-    int                 m_nMaxFileNum;              // µ¥¼¶ÈÕÖ¾ÎÄ¼ş×î´óÊı
-    FILE_MODE           m_fmLog;                    // ÈÕÖ¾ÎÄ¼şÄ£Ê½
-    bool                m_bEnableTS;                // ÊÇ·ñÆôÓÃÏß³Ì°²È«
-    HANDLE              m_hWorkThread;              // ¹¤×÷Ïß³Ì¾ä±ú
-    bool                m_bRun;                     // ÊÇ·ñÔËĞĞ
+    CRITICAL_SECTION    m_csLogQueue[LV_MAX+1];     // æ—¥å¿—é˜Ÿåˆ—é”
+    FILE*               m_fpLog[LV_MAX+1];          // æ—¥å¿—æ–‡ä»¶å¥æŸ„
+    queue<string>       m_quLogBuf[LV_MAX+1];       // æ—¥å¿—é˜Ÿåˆ—ç¼“å†²åŒº
+    LV                  m_lvLog;                    // æ—¥å¿—ç­‰çº§
+    string              m_strLogPath;               // æ—¥å¿—æ–‡ä»¶è·¯å¾„
+    string              m_strAppName;               // æ—¥å¿—ç¨‹åºåç§°ï¼Œæ—¥å¿—æ–‡ä»¶åä¸­åŒ…å«è¯¥å­—æ®µ
+    size_t              m_nMaxFileSize;             // å•ä¸ªæ—¥å¿—æ–‡ä»¶æœ€å¤§å€¼
+    int                 m_nMaxFileNum;              // å•çº§æ—¥å¿—æ–‡ä»¶æœ€å¤§æ•°
+    FILE_MODE           m_fmLog;                    // æ—¥å¿—æ–‡ä»¶æ¨¡å¼
+    bool                m_bEnableTS;                // æ˜¯å¦å¯ç”¨çº¿ç¨‹å®‰å…¨
+    HANDLE              m_hWorkThread;              // å·¥ä½œçº¿ç¨‹å¥æŸ„
+    bool                m_bRun;                     // æ˜¯å¦è¿è¡Œ
 };
 
 }
@@ -195,28 +195,28 @@ protected:
                                 SLogInst->WriteLogBuf(lv, __LOGLv_strLog__);\
                              }while(0);
 
-// ¸ñÊ½»¯ÈÕÖ¾½Ó¿Ú
+// æ ¼å¼åŒ–æ—¥å¿—æ¥å£
 #define LOGD(fmt,...)   LOGLv(CMS::CSlog::LV_DEBUG,fmt,  ##__VA_ARGS__)
 #define LOGI(fmt,...)   LOGLv(CMS::CSlog::LV_INFO ,fmt,  ##__VA_ARGS__)
 #define LOGW(fmt,...)   LOGLv(CMS::CSlog::LV_WARN ,fmt,  ##__VA_ARGS__)
 #define LOGE(fmt,...)   LOGLv(CMS::CSlog::LV_ERROR,fmt,  ##__VA_ARGS__)
 #define LOGF(fmt,...)   LOGLv(CMS::CSlog::LV_FATAL,fmt,  ##__VA_ARGS__)
 
-// ¶ş½øÖÆ°²È«ÈÕÆÚ
+// äºŒè¿›åˆ¶å®‰å…¨æ—¥æœŸ
 #define BLOGD(pTitle, pBuf, nLen)   BLOGLv(CMS::CSlog::LV_DEBUG, pTitle, pBuf, nLen)
 #define BLOGI(pTitle, pBuf, nLen)   BLOGLv(CMS::CSlog::LV_INFO , pTitle, pBuf, nLen)
 #define BLOGW(pTitle, pBuf, nLen)   BLOGLv(CMS::CSlog::LV_WARN , pTitle, pBuf, nLen)
 #define BLOGE(pTitle, pBuf, nLen)   BLOGLv(CMS::CSlog::LV_ERROR, pTitle, pBuf, nLen)
 #define BLOGF(pTitle, pBuf, nLen)   BLOGLv(CMS::CSlog::LV_FATAL, pTitle, pBuf, nLen)
 
-// ÈÕÖ¾·Ö¶Î±êÇ©£¬Ä¬ÈÏ±êÇ©µ±Ç°º¯ÊıÃû
+// æ—¥å¿—åˆ†æ®µæ ‡ç­¾ï¼Œé»˜è®¤æ ‡ç­¾å½“å‰å‡½æ•°å
 #define LOGDH()   LOGLvH(CMS::CSlog::LV_DEBUG,__FUNCTION__)
 #define LOGIH()   LOGLvH(CMS::CSlog::LV_INFO ,__FUNCTION__)
 #define LOGWH()   LOGLvH(CMS::CSlog::LV_WARN ,__FUNCTION__)
 #define LOGEH()   LOGLvH(CMS::CSlog::LV_ERROR,__FUNCTION__)
 #define LOGFH()   LOGLvH(CMS::CSlog::LV_FATAL,__FUNCTION__)
 
-// ÈÕÖ¾·Ö¶Î±êÇ©
+// æ—¥å¿—åˆ†æ®µæ ‡ç­¾
 #define LOGDHT(tag)   LOGLvH(CMS::CSlog::LV_DEBUG,tag)
 #define LOGIHT(tag)   LOGLvH(CMS::CSlog::LV_INFO ,tag)
 #define LOGWHT(tag)   LOGLvH(CMS::CSlog::LV_WARN ,tag)

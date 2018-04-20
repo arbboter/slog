@@ -9,7 +9,7 @@ using namespace std;
 using namespace CMS;
 
 
-// ¹Ø±ÕÌØ¶¨±àÒë¾¯¸æ
+// å…³é—­ç‰¹å®šç¼–è¯‘è­¦å‘Š
 #pragma warning(disable:4996)
 
 
@@ -40,10 +40,10 @@ int CSlog::MakeMultiPath(const string& strPath)
 
 int CSlog::GetPathUnit(const string& strPath, vector<string>& vecPath)
 {
-    // Â·¾¶·ÖÎª¾ø¶ÔÂ·¾¶ºÍÏà¶ÔÂ·¾¶
-    // Èç:./log/,./../log,D:/log/20161031
+    // è·¯å¾„åˆ†ä¸ºç»å¯¹è·¯å¾„å’Œç›¸å¯¹è·¯å¾„
+    // å¦‚:./log/,./../log,D:/log/20161031
 
-    // ¸ñÊ½»¯Â·¾¶£¬½«\Ìæ»»Îª/
+    // æ ¼å¼åŒ–è·¯å¾„ï¼Œå°†\æ›¿æ¢ä¸º/
     size_t nPos = 0;
     string strWinDim = "\\";
     string strFmtDim = "/";
@@ -54,7 +54,7 @@ int CSlog::GetPathUnit(const string& strPath, vector<string>& vecPath)
         nPos += strWinDim.length();
     }
 
-    // ·Ö¸îÂ·¾¶
+    // åˆ†å‰²è·¯å¾„
     return Split(strFmtPath, strFmtDim, vecPath);
 }
 
@@ -68,7 +68,7 @@ int CSlog::Split(const string& strSrc, const string& strDim, vector<string>& vec
         nPos += strDim.length();
         nLast =  nPos;
     }
-    // ´¦ÀíÎ²°Í
+    // å¤„ç†å°¾å·´
     size_t nLen = strSrc.size();
     if(nLast < nLen)
     {
@@ -91,13 +91,13 @@ void CSlog::SetCfg(const LV& lv, const string& strName, const string& strLogPath
     m_strAppName = strName;
     m_lvLog = lv;
 
-    // ¹Ø±ÕÎÄ¼ş
+    // å…³é—­æ–‡ä»¶
     Uninit();
 }
 
 CSlog* CSlog::Inst()
 {
-    // ·ÇÏß³Ì°²È«
+    // éçº¿ç¨‹å®‰å…¨
     if(m_pInst == NULL)
     {
         m_pInst = new CSlog();
@@ -125,7 +125,7 @@ string CSlog::BuildHeader(const string& strTag)
     stringstream ssLog;
     const char* pLineTag = "---------------------";
 
-    // ÈÕÖ¾Í·ĞÅÏ¢
+    // æ—¥å¿—å¤´ä¿¡æ¯
     ssLog << pLineTag << strTag << "    " <<  __DATE__ << " " << __TIME__ << pLineTag << "\n";
     
     return ssLog.str();
@@ -224,13 +224,13 @@ unsigned int __stdcall CMS::CSlog::LogWork(void* pLog)
 
     while(pThis->m_bRun)
     {
-        // Ğ´ÈÕÖ¾µ½ÎÄ¼ş
+        // å†™æ—¥å¿—åˆ°æ–‡ä»¶
         bHaveLogs = false;
         for (nLogLvl=0; nLogLvl<LV_MAX; nLogLvl++)
         {
             if(pLogBuf[nLogLvl].size() > 0)
             {
-                // »ñÈ¡¶ÓÁĞÈÕÖ¾
+                // è·å–é˜Ÿåˆ—æ—¥å¿—
                 bFetchLog = false;
                 pThis->Lock(nLogLvl);
                 if(pLogBuf[nLogLvl].size() > 0)
@@ -241,7 +241,7 @@ unsigned int __stdcall CMS::CSlog::LogWork(void* pLog)
                 }
                 pThis->Unlock(nLogLvl);
 
-                // Ğ´ÈÕÖ¾µ½ÎÄ¼ş
+                // å†™æ—¥å¿—åˆ°æ–‡ä»¶
                 if(bFetchLog)
                 {
                     bHaveLogs = true;
@@ -250,10 +250,10 @@ unsigned int __stdcall CMS::CSlog::LogWork(void* pLog)
             }
         }
 
-        // Èç¹ûÃ»ÓĞ»ñÈ¡µ½ÈÕÖ¾£¬ĞİÃßÒ»¶ÎÊ±¼ä
+        // å¦‚æœæ²¡æœ‰è·å–åˆ°æ—¥å¿—ï¼Œä¼‘çœ ä¸€æ®µæ—¶é—´
         if(!bHaveLogs)
         {
-            // printf("Ã»ÓĞÈÕÖ¾ÁË£¬Ë¯Ò»»á¶ù\n");
+            // printf("æ²¡æœ‰æ—¥å¿—äº†ï¼Œç¡ä¸€ä¼šå„¿\n");
             Sleep(1000);
         }
     }
@@ -287,7 +287,7 @@ std::string CSlog::Formate(const char * pFmt, va_list va)
     {
         static char pMiniBuf[1024] = {0};
         
-        // Ğ¡ÄÚ´æ²»¶îÍâ·ÖÅäÄÚ´æ
+        // å°å†…å­˜ä¸é¢å¤–åˆ†é…å†…å­˜
         if(nLen < 1024)
         {
             pBuf = pMiniBuf;
@@ -297,7 +297,7 @@ std::string CSlog::Formate(const char * pFmt, va_list va)
             pNewBuf = new char[nLen];
             if(pNewBuf == NULL)
             {
-                // ÄÚ´æ·ÖÅäÊ§°Ü
+                // å†…å­˜åˆ†é…å¤±è´¥
                 throw runtime_error("alloc memory failed.");
             }
             pBuf = pNewBuf;
@@ -309,7 +309,7 @@ std::string CSlog::Formate(const char * pFmt, va_list va)
     }
     catch(...)
     {
-        // Òì³£´íÎó
+        // å¼‚å¸¸é”™è¯¯
     }
     if(pNewBuf)
     {
@@ -345,12 +345,12 @@ size_t CSlog::WriteLogBuf(const LV& lv, const string& strLog)
         }
     }
 
-    // Ğ´µ±Ç°ÈÕÖ¾
+    // å†™å½“å‰æ—¥å¿—
     Lock(wlv);
     m_quLogBuf[wlv].push(strLog);
     Unlock(wlv);
     
-    // Ğ´ÏÂ¼¶ÈÕÖ¾
+    // å†™ä¸‹çº§æ—¥å¿—
     if(m_fmLog == FM_TREE)
     {
         WriteLogBuf((LV)(lv-1), strLog);
@@ -418,13 +418,13 @@ bool CSlog::RollFile(const LV& lv, int nStart)
         strPath = m_strLogPath + GetName(lv, i-1);
         strNewPath = m_strLogPath + GetName(lv, i);
         
-        // É¾³ı¾ÉÎÄ¼ş
+        // åˆ é™¤æ—§æ–‡ä»¶
         if(FileExist(strNewPath.c_str()))
         {
             DeleteFileA(strNewPath.c_str());
         }
 
-        // ¸´ÖÆÎÄ¼ş
+        // å¤åˆ¶æ–‡ä»¶
         if(FileExist(strPath.c_str()))
         {
             bRet &= (MoveFileA(strPath.c_str(), strNewPath.c_str()) == TRUE);
@@ -448,7 +448,7 @@ FILE* CSlog::ObtainFile(const LV& lv)
             m_fpLog[lv] = fopen(strName.c_str(), "a");
             if(m_fpLog[lv] == NULL)
             {
-                // ´ò¿ªÎÄ¼şÊ§°Ü£¬³¢ÊÔ´´½¨Ä¿Â¼
+                // æ‰“å¼€æ–‡ä»¶å¤±è´¥ï¼Œå°è¯•åˆ›å»ºç›®å½•
                 MakeMultiPath(m_strLogPath);
             }
             else
@@ -501,7 +501,7 @@ int CSlog::CloseFile(const LV& lv)
 
 bool CSlog::FileExist(const string& strFile)
 {
-    // ¸´ÖÆÎÄ¼ş
+    // å¤åˆ¶æ–‡ä»¶
     return (INVALID_FILE_ATTRIBUTES != GetFileAttributesA(strFile.c_str()));
 }
 
